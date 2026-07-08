@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClipMath — What clippers actually keep</title>
+<meta name="description" content="Every clipping platform advertises a CPM. ClipMath shows what you actually keep after fees, minimums, and rejections. Neutral. No platform pays us.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f141b;
+    --surface:#161d27;
+    --surface-2:#1c2532;
+    --line:#283444;
+    --text:#e9eef4;
+    --text-dim:#93a1b3;
+    --keep:#3ddc97;      /* money you keep */
+    --fee:#f0645c;       /* what fees take */
+    --warn:#f2b64c;      /* thresholds & gotchas */
+    --radius:10px;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'IBM Plex Sans',system-ui,sans-serif;
+    --disp:'Space Grotesk',var(--sans);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;font-size:16px}
+  a{color:var(--keep)}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+
+  /* header */
+  header{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(15,20,27,.92);backdrop-filter:blur(8px);z-index:10}
+  .hd{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-family:var(--disp);font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+  .logo .mth{color:var(--keep)}
+  .stamp{font-family:var(--mono);font-size:.72rem;color:var(--text-dim);border:1px solid var(--line);padding:4px 10px;border-radius:99px}
+  .stamp b{color:var(--warn);font-weight:500}
+
+  /* hero */
+  .hero{padding:64px 0 36px}
+  .kicker{font-family:var(--mono);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);margin-bottom:14px}
+  h1{font-family:var(--disp);font-weight:700;font-size:clamp(1.9rem,4.6vw,3.1rem);line-height:1.12;letter-spacing:-.025em;max-width:760px}
+  h1 .adv{position:relative;white-space:nowrap;color:var(--text-dim)}
+  h1 .adv::after{content:'';position:absolute;left:-2%;top:54%;width:0;height:3px;background:var(--fee);border-radius:2px;animation:strike .5s .9s ease-out forwards}
+  @keyframes strike{to{width:104%}}
+  h1 .keep{color:var(--keep)}
+  .sub{color:var(--text-dim);max-width:640px;margin-top:18px;font-size:1.05rem}
+  .sub b{color:var(--text);font-weight:600}
+
+  /* board */
+  .board{margin:40px 0 8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .board-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:8px}
+  .board-title{font-family:var(--disp);font-weight:700;font-size:1rem}
+  .legend{display:flex;gap:16px;font-family:var(--mono);font-size:.7rem;color:var(--text-dim)}
+  .legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:720px}
+  th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);text-align:left;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:500}
+  td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:var(--surface-2)}
+  .pname{font-family:var(--disp);font-weight:700}
+  .pmodel{font-size:.75rem;color:var(--text-dim)}
+  .num{font-family:var(--mono);font-size:.85rem}
+  .cpm-adv{color:var(--text)}
+  .fee-v{color:var(--fee)}
+  .min-v{color:var(--warn)}
+  .keep-v{color:var(--keep);font-weight:600}
+  .note{font-size:.74rem;color:var(--text-dim)}
+  .src-note{padding:12px 18px;font-family:var(--mono);font-size:.7rem;color:var(--text-dim);border-top:1px solid var(--line)}
+
+  /* sections */
+  section{padding:56px 0}
+  h2{font-family:var(--disp);font-weight:700;font-size:clamp(1.4rem,3vw,1.9rem);letter-spacing:-.02em;margin-bottom:8px}
+  .lead{color:var(--text-dim);max-width:620px;margin-bottom:28px}
+
+  /* calculator */
+  .calc{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:26px;display:grid;grid-template-columns:280px 1fr;gap:30px}
+  @media(max-width:760px){.calc{grid-template-columns:1fr}}
+  .ctl label{display:block;font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:18px 0 8px}
+  .ctl label:first-child{margin-top:0}
+  .ctl output{float:right;color:var(--keep);font-family:var(--mono)}
+  input[type=range]{width:100%;accent-color:var(--keep)}
+  .results{display:flex;flex-direction:column;gap:10px}
+  .rrow{display:grid;grid-template-columns:130px 1fr 110px;gap:14px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+  @media(max-width:520px){.rrow{grid-template-columns:100px 1fr 90px;gap:8px;padding:10px 12px}}
+  .rname{font-family:var(--disp);font-weight:700;font-size:.9rem}
+  .bar-track{height:10px;background:var(--bg);border-radius:6px;overflow:hidden;display:flex}
+  .bar-keep{background:var(--keep);height:100%;transition:width .35s ease}
+  .bar-fee{background:var(--fee);height:100%;transition:width .35s ease}
+  .rnum{font-family:var(--mono);font-size:.92rem;text-align:right;color:var(--keep);font-weight:600}
+  .rnum.zero{color:var(--warn)}
+  .rwhy{grid-column:1/-1;font-size:.72rem;color:var(--warn);font-family:var(--mono)}
+  .calc-note{grid-column:1/-1;font-size:.75rem;color:var(--text-dim);margin-top:6px}
+
+  /* why */
+  .why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media(max-width:760px){.why-grid{grid-template-columns:1fr}}
+  .why-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+  .why-card h3{font-family:var(--disp);font-size:1rem;margin-bottom:8px}
+  .why-card p{font-size:.88rem;color:var(--text-dim)}
+  .why-card .tag{font-family:var(--mono);font-size:.68rem;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:10px}
+
+  /* signup */
+  .signup{background:linear-gradient(180deg,var(--surface),var(--surface-2));border:1px solid var(--line);border-radius:var(--radius);padding:40px 26px;text-align:center}
+  .signup h2{margin-bottom:10px}
+  .signup p{color:var(--text-dim);max-width:520px;margin:0 auto 24px}
+  .form{display:flex;gap:10px;max-width:460px;margin:0 auto;flex-wrap:wrap;justify-content:center}
+  .form input[type=email]{flex:1;min-width:220px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:13px 16px;color:var(--text);font-family:var(--sans);font-size:.95rem}
+  .form input[type=email]:focus{outline:2px solid var(--keep);outline-offset:1px;border-color:transparent}
+  .btn{background:var(--keep);color:#08110d;border:none;border-radius:8px;padding:13px 22px;font-family:var(--disp);font-weight:700;font-size:.95rem;cursor:pointer}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .form-msg{margin-top:14px;font-family:var(--mono);font-size:.78rem;min-height:1.2em}
+  .form-msg.ok{color:var(--keep)}
+  .form-msg.err{color:var(--fee)}
+  .perks{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:22px;font-family:var(--mono);font-size:.72rem;color:var(--text-dim)}
+  .perks span::before{content:'+ ';color:var(--keep)}
+
+  footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:.78rem;color:var(--text-dim)}
+  footer .wrap{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hd">
+    <div class="logo">Clip<span class="mth">Math</span></div>
+    <div class="stamp">rates verified <b>Jul 2026</b> · updated weekly</div>
+  </div>
+</header>
+
+<section class="hero wrap">
+  <div class="kicker">The neutral scoreboard for the clipping economy</div>
+  <h1>Platforms advertise the <span class="adv">CPM</span>.<br>We show what you <span class="keep">keep</span>.</h1>
+  <p class="sub">Every clipping platform's blog says they pay the most. None of them mention the <b>payout fees</b>, <b>minimum-view thresholds</b>, and <b>rejection windows</b> that decide your real check. ClipMath compares them all in one place — and no platform pays us.</p>
+
+  <div class="board">
+    <div class="board-head">
+      <div class="board-title">Platform board — pay-per-view campaigns</div>
+      <div class="legend">
+        <span><i style="background:var(--keep)"></i>you keep</span>
+        <span><i style="background:var(--fee)"></i>fees</span>
+        <span><i style="background:var(--warn)"></i>gotchas</span>
+      </div>
+    </div>
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Platform</th><th>Advertised rate</th><th>Payout fee</th><th>Minimums &amp; gotchas</th><th>Payout method</th></tr>
+      </thead>
+      <tbody id="board-body"></tbody>
+    </table>
+    </div>
+    <div class="src-note">Compiled from public platform documentation and published rates. Ranges vary by campaign — always read the specific campaign terms. Spotted something outdated? Email us.</div>
+  </div>
+</section>
+
+<section class="wrap" id="calc">
+  <h2>The take-home calculator</h2>
+  <p class="lead">Set your monthly output. We apply each platform's real fee and minimum-threshold math — including the clips that earn <span style="color:var(--warn);font-family:var(--mono)">$0</span> because they missed the floor.</p>
+  <div class="calc">
+    <div class="ctl">
+      <label for="views">Monthly verified views <output id="views-out">500,000</output></label>
+      <input type="range" id="views" min="10000" max="5000000" step="10000" value="500000">
+      <label for="clips">Clips posted / month <output id="clips-out">40</output></label>
+      <input type="range" id="clips" min="4" max="300" step="2" value="40">
+      <label for="cpm">Campaign CPM you land <output id="cpm-out">$2.00</output></label>
+      <input type="range" id="cpm" min="0.5" max="5" step="0.25" value="2">
+    </div>
+    <div class="results" id="results"></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Why this exists</h2>
+  <p class="lead">Search "best clipping platform" and every result is one platform's marketing team reviewing its competitors. The industry has no referee. So we built one.</p>
+  <div class="why-grid">
+    <div class="why-card">
+      <span class="tag">Neutral</span>
+      <h3>No platform pays us</h3>
+      <p>We don't run campaigns, take a cut of payouts, or sell placement on the board. Rates come from public documentation and campaign data, re-verified weekly.</p>
+    </div>
+    <div class="why-card">
+      <span class="tag">Effective, not advertised</span>
+      <h3>Fee-adjusted math</h3>
+      <p>A $3 CPM with a 9% payout fee and a 100k minimum can pay less than a $2 CPM with no floor. We rank by what clears into your account, not the headline number.</p>
+    </div>
+    <div class="why-card">
+      <span class="tag">Coming next</span>
+      <h3>Live campaign alerts</h3>
+      <p>The full version tracks open campaigns across platforms and pings you when a high effective-CPM campaign drops in your niche — before it's saturated.</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="signup">
+  <div class="signup">
+    <h2>Get the live version first</h2>
+    <p>The board above is a snapshot. The full tool is a live feed: every open campaign across every platform, ranked by effective take-home, with alerts for your niche. Free for early users.</p>
+    <form class="form" id="waitlist-form">
+      <input type="email" id="email" placeholder="you@email.com" required aria-label="Email address">
+      <button class="btn" type="submit">Join the waitlist</button>
+    </form>
+    <div class="form-msg" id="form-msg" role="status"></div>
+    <div class="perks">
+      <span>campaign alerts</span>
+      <span>cross-platform earnings tracker</span>
+      <span>account-risk early warning</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>ClipMath — independent clipping-economy data. Not affiliated with any platform listed.</div>
+    <div>Rates change; verify campaign terms before posting.</div>
+  </div>
+</footer>
+
+<script>
+/* ================= CONFIG =================
+   1. Create a Supabase project (or reuse one).
+   2. Run the SQL in supabase-setup.sql.
+   3. Paste your project URL + anon key below.  */
+const SUPABASE_URL = "";          // e.g. https://xyz.supabase.co
+const SUPABASE_ANON_KEY = "";     // anon public key
+/* ========================================== */
+
+/* ---- Platform data (verified Jul 2026 — update weekly) ---- */
+const PLATFORMS = [
+  {name:"Whop Content Rewards", model:"Marketplace of brand/creator programs", cpmLow:1.25, cpmHigh:4, fee:0.09, minViewsPerClip:0, gotchas:"72-hr review; minimums & caps set per program — read each one", payout:"Crypto", perProgramMin:true},
+  {name:"Vyro", model:"Creator-roster campaigns (MrBeast-backed)", cpmLow:3, cpmHigh:3, fee:0, feeNote:"platform-set", minViewsPerClip:0, gotchas:"Limited to roster campaigns; views pooled across TikTok/Reels/Shorts", payout:"Platform payout"},
+  {name:"ClipAffiliates", model:"Two-sided brand marketplace", cpmLow:1, cpmHigh:5, fee:0.09, minViewsPerClip:0, gotchas:"72-hr approval window before views count", payout:"Crypto"},
+  {name:"Clipping.net", model:"Campaign platform", cpmLow:0.5, cpmHigh:0.5, fee:0, feeNote:"—", minViewsPerClip:100000, gotchas:"100k-view floor: clips under it pay $0", payout:"Platform payout"},
+  {name:"Promote.fun", model:"Campaign marketplace (crypto-skewed)", cpmLow:1, cpmHigh:3, fee:0, feeNote:"varies", minViewsPerClip:0, gotchas:"Rates vary widely by campaign type", payout:"Crypto"}
+];
+
+const fmt$ = n => "$" + n.toLocaleString(undefined,{maximumFractionDigits:0});
+const fmtN = n => n.toLocaleString();
+
+/* ---- Board ---- */
+const body = document.getElementById("board-body");
+body.innerHTML = PLATFORMS.map(p=>`
+  <tr>
+    <td><div class="pname">${p.name}</div><div class="pmodel">${p.model}</div></td>
+    <td class="num cpm-adv">${p.cpmLow===p.cpmHigh?`$${p.cpmLow.toFixed(2)}`:`$${p.cpmLow.toFixed(2)}–$${p.cpmHigh.toFixed(2)}`}<div class="note">per 1k views</div></td>
+    <td class="num ${p.fee? 'fee-v':''}">${p.fee?`−${(p.fee*100).toFixed(0)}%`:(p.feeNote||"—")}</td>
+    <td><span class="min-v num">${p.minViewsPerClip?fmtN(p.minViewsPerClip)+" min":""}</span><div class="note">${p.gotchas}</div></td>
+    <td class="note">${p.payout}</td>
+  </tr>`).join("");
+
+/* ---- Calculator ---- */
+const views=document.getElementById("views"), clips=document.getElementById("clips"), cpm=document.getElementById("cpm");
+const results=document.getElementById("results");
+
+function calc(){
+  const V=+views.value, C=+clips.value, R=+cpm.value;
+  document.getElementById("views-out").textContent=fmtN(V);
+  document.getElementById("clips-out").textContent=C;
+  document.getElementById("cpm-out").textContent="$"+R.toFixed(2);
+  const avg=V/C;
+
+  const rows=PLATFORMS.map(p=>{
+    const rate=Math.min(Math.max(R,p.cpmLow),p.cpmHigh);       // clamp to platform's real range
+    let eligibleViews=V, why="";
+    if(p.minViewsPerClip && avg<p.minViewsPerClip){eligibleViews=0; why=`avg ${fmtN(Math.round(avg))} views/clip is under the ${fmtN(p.minViewsPerClip)} floor — every clip pays $0`;}
+    const gross=eligibleViews/1000*rate;
+    const feeAmt=gross*p.fee;
+    const net=gross-feeAmt;
+    if(p.perProgramMin && net>0) why="before per-program minimums & caps";
+    return {p,gross,feeAmt,net,why,rate};
+  }).sort((a,b)=>b.net-a.net);
+
+  const max=Math.max(...rows.map(r=>r.gross),1);
+  results.innerHTML=rows.map(r=>`
+    <div class="rrow">
+      <div class="rname">${r.p.name}<div class="note num">@ $${r.rate.toFixed(2)} CPM</div></div>
+      <div class="bar-track">
+        <div class="bar-keep" style="width:${(r.net/max*100)}%"></div>
+        <div class="bar-fee" style="width:${(r.feeAmt/max*100)}%"></div>
+      </div>
+      <div class="rnum ${r.net===0?'zero':''}">${r.net===0?"$0":fmt$(r.net)}<div class="note">${r.feeAmt>0?`−${fmt$(r.feeAmt)} fees`:"&nbsp;"}</div></div>
+      ${r.why?`<div class="rwhy">⚠ ${r.why}</div>`:""}
+    </div>`).join("")
+    +`<div class="calc-note">Estimates assume all clips approved and views verified. Real campaigns add per-program minimum payouts, caps, and rejections — the live tool models those per campaign.</div>`;
+}
+[views,clips,cpm].forEach(el=>el.addEventListener("input",calc));
+calc();
+
+/* ---- Waitlist ---- */
+document.getElementById("waitlist-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const email=document.getElementById("email").value.trim();
+  const msg=document.getElementById("form-msg");
+  msg.className="form-msg";
+  if(!SUPABASE_URL||!SUPABASE_ANON_KEY){
+    msg.textContent="Signup backend not configured yet — set SUPABASE_URL and SUPABASE_ANON_KEY in index.html.";
+    msg.classList.add("err");return;
+  }
+  try{
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/waitlist`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SUPABASE_ANON_KEY,"Authorization":`Bearer ${SUPABASE_ANON_KEY}`,"Prefer":"return=minimal"},
+      body:JSON.stringify({email,source:document.referrer||"direct",utm:location.search||null})
+    });
+    if(res.status===409){msg.textContent="You're already on the list ✓";msg.classList.add("ok");return;}
+    if(!res.ok) throw new Error(await res.text());
+    msg.textContent="You're in. Watch your inbox ✓";
+    msg.classList.add("ok");
+    document.getElementById("email").value="";
+  }catch(err){
+    msg.textContent="Couldn't save that — try again in a minute.";
+    msg.classList.add("err");
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>

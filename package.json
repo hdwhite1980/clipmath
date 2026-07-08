@@ -1,0 +1,12 @@
+{
+  "name": "clipmath",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Neutral comparison board + take-home calculator for the clipping economy",
+  "scripts": {
+    "start": "serve -s . -l tcp://0.0.0.0:${PORT:-3000}"
+  },
+  "dependencies": {
+    "serve": "^14.2.1"
+  }
+}
